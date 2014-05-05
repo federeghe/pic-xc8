@@ -6,18 +6,35 @@
  */
 
 #include <xc.h>
-#include <stdint.h>        /* For uint8_t definition */
+
+#include <limits.h>       /* For *_MAX definitions */
 #include <stdbool.h>       /* For true/false definition */
+
 #include "pinout.h"
 
 #define _XTAL_FREQ      10000000L
 
+// Define the output behaviour:
+// TRIS_STATE: 00, 01, 10 on 0-33, 34-66,67-100
+// QUAD_STATE: 00, 01, 10, 11 on 0-25, 26-50, 51-75, 76-100
 #define QUAD_STATE 0
-#define INT_MAX 65535
+
+// Define counters size and timeout (critical values! See wiki!)
+#define LONG_INT 0
 #define DELAY_US 50
+
+#if LONG_INT
+#define COUNTER_MAX ULONG_MAX
+typedef unsigned long counter;
+#else
+#define COUNTER_MAX UINT_MAX
+typedef unsigned short counter;
+#endif
 
 typedef enum {T_NONE, T_ON, T_OFF} pwm_status;
 
+// Return true on (relative) high value or false on (relative) low value
+// on pwm input pin "n".
 bool get_pin(unsigned char n)
 {
     switch(n)
@@ -33,6 +50,8 @@ bool get_pin(unsigned char n)
     }
     return false;
 }
+
+// Write value on pwm output pins "n". 0<=value<=3 (2 bit)
 void set_pin(unsigned char n, char value)
 {
     switch(n)
@@ -56,11 +75,11 @@ void set_pin(unsigned char n, char value)
     }
 }
 
-void translate_pwm(unsigned char n, unsigned int cycle_ON, unsigned int cycle_OFF)
+void translate_pwm(unsigned char n, counter cycle_ON, counter cycle_OFF)
 {
-    if ( cycle_OFF == 0 ) cycle_OFF++;
+    if ( cycle_OFF == 0 ) cycle_OFF++;  // Formal check: avoid zero division
 
-    unsigned int rapport = cycle_ON*100/cycle_OFF;
+    counter rapport = cycle_ON * 100 / cycle_OFF;
 
 #if QUAD_STATE
     if      ( rapport <= 25)
@@ -88,8 +107,8 @@ int main(void) {
 
     // 2 byte unsigned int 0-65535
     pwm_status pwm[4];
-    unsigned int cycle_ON [4];
-    unsigned int cycle_OFF[4];
+    counter cycle_ON [4];
+    counter cycle_OFF[4];
 
 
     TRISA = TRISA_CONFIG;
@@ -99,8 +118,11 @@ int main(void) {
     for ( unsigned char i=0; i<4; i++)
         set_pin(i,0);
 
+    // Wait 500msec to wait oscillator stabilized.
     __delay_ms(500);
 
+    // Clear all output and variables
+    // TODO: restore output saved in EEPROM values
     for ( unsigned char i=0; i<4; i++) {
         pwm[i] = T_NONE;
         cycle_ON [i] = 0;
@@ -108,30 +130,33 @@ int main(void) {
     }
 
     while (true) {
-        // Aggiornamento contatori
-        for ( unsigned char i=0; i<4; i++) {
-            if (get_pin(i)) {
+        for ( unsigned char i=0; i<4; i++) {    // For each PWM sections...
+            if (get_pin(i)) { // Signal is HIGH
+
+                // If previous was OFF, elaborate pwm output
+                // and restart PWM cycle
                 if (pwm[i] == T_OFF) {
                     translate_pwm(i, cycle_ON[i], cycle_OFF[i]);
                     cycle_OFF[i] = cycle_ON[i] = 0;
                 }
                 pwm[i] = T_ON;
-                cycle_ON[i]++;
+                cycle_ON[i]++;          // Update counter...
 
             }
-            else {
-                if ( pwm[i] == T_NONE ) // Finche' non vedo un UP...
+            else { // Signal is LOW
+                if ( pwm[i] == T_NONE ) // No HIGH detected, countinue...
                     continue;
                 else if ( pwm[i] == T_ON )
                     pwm[i] = T_OFF;
-                cycle_OFF [i]++;
+                cycle_OFF [i]++;        // Update counter...
 
             }
 
-            if ( cycle_OFF[i] >= INT_MAX ||  cycle_ON[i] >= INT_MAX ) {
-                pwm[i]       = T_NONE;
-                set_pin(i,0);
-                cycle_ON[i] = cycle_OFF[i] = 0;
+            // Overflow detected: No valid pwm signal.
+            if ( cycle_OFF[i] >= COUNTER_MAX ||  cycle_ON[i] >= COUNTER_MAX ) {
+                pwm[i]       = T_NONE;          // No signal
+                set_pin(i,0);                   // Clear all output
+                cycle_ON[i] = cycle_OFF[i] = 0; // Reset counters
             }
 
         }   // End for

@@ -1,8 +1,8 @@
-_translate_pwm: CODE, 513 0 85
-_main: CODE, 714 0 310
-__initialization: CODE, 351 0 0
-___lwdiv: CODE, 435 0 78
-_get_pin: CODE, 353 0 39
-_set_pin: CODE, 598 0 116
-___wmul: CODE, 392 0 43
-Total: 671
+_translate_pwm: CODE, 515 0 85
+_main: CODE, 716 0 308
+__initialization: CODE, 353 0 0
+___lwdiv: CODE, 437 0 78
+_get_pin: CODE, 355 0 39
+_set_pin: CODE, 600 0 116
+___wmul: CODE, 394 0 43
+Total: 669

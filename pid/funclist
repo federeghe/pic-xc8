@@ -1,0 +1,16 @@
+___ftneg: CODE, 28744 0 38
+_pid_init: CODE, 29030 0 96
+___ftpack: CODE, 29270 0 168
+_main: CODE, 30646 0 818
+_pid_data: CODE, 31464 0 1304
+___ftadd: CODE, 30206 0 440
+___asftadd: CODE, 28886 0 60
+__initialization: CODE, 28726 0 12
+_gen_sp: CODE, 29892 0 314
+_sca: CODE, 28782 0 46
+_ramp: CODE, 28828 0 58
+___ftmul: CODE, 29656 0 236
+___awtoft: CODE, 28946 0 84
+___ftge: CODE, 29126 0 144
+___ftdiv: CODE, 29438 0 218
+Total: 4036
